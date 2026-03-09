@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 void main() {
   runApp(const CholoApp());
@@ -38,11 +40,36 @@ class _DriverRidePageState extends State<DriverRidePage> {
   bool isLoading = false;
   DateTime? selectedDepartureTime;
 
+  LatLng? startLocation;
+  LatLng? endLocation;
+
   final String baseUrl = "http://10.0.2.2:5000/api/rides";
 
   bool get canEdit => rideStatus == "NOT_CREATED" || rideStatus == "PLANNED";
   bool get canShowCreate => rideId == null;
   bool get canShowPlannedActions => rideId != null && rideStatus == "PLANNED";
+
+  void handleMapTap(TapPosition tapPosition, LatLng point) {
+    if (!canEdit || isLoading) return;
+
+    setState(() {
+      if (startLocation == null) {
+        startLocation = point;
+        originController.text =
+            "Start: ${point.latitude.toStringAsFixed(5)}, ${point.longitude.toStringAsFixed(5)}";
+      } else if (endLocation == null) {
+        endLocation = point;
+        destinationController.text =
+            "Destination: ${point.latitude.toStringAsFixed(5)}, ${point.longitude.toStringAsFixed(5)}";
+      } else {
+        startLocation = point;
+        endLocation = null;
+        originController.text =
+            "Start: ${point.latitude.toStringAsFixed(5)}, ${point.longitude.toStringAsFixed(5)}";
+        destinationController.clear();
+      }
+    });
+  }
 
   Future<void> pickDepartureDateTime() async {
     final now = DateTime.now();
@@ -238,6 +265,8 @@ class _DriverRidePageState extends State<DriverRidePage> {
       rideId = null;
       rideStatus = "NOT_CREATED";
       selectedDepartureTime = null;
+      startLocation = null;
+      endLocation = null;
       originController.clear();
       destinationController.clear();
       departureController.clear();
@@ -257,6 +286,11 @@ class _DriverRidePageState extends State<DriverRidePage> {
     final seats = int.tryParse(seatsController.text.trim());
     if (seats == null || seats <= 0) {
       showMessage("Seats must be a positive number");
+      return false;
+    }
+
+    if (startLocation == null || endLocation == null) {
+      showMessage("Please select start and destination on the map");
       return false;
     }
 
@@ -293,6 +327,48 @@ class _DriverRidePageState extends State<DriverRidePage> {
     }
   }
 
+  List<Marker> _buildMarkers() {
+    final markers = <Marker>[];
+
+    if (startLocation != null) {
+      markers.add(
+        Marker(
+          point: startLocation!,
+          width: 50,
+          height: 50,
+          child: const Icon(Icons.location_pin, size: 42, color: Colors.green),
+        ),
+      );
+    }
+
+    if (endLocation != null) {
+      markers.add(
+        Marker(
+          point: endLocation!,
+          width: 50,
+          height: 50,
+          child: const Icon(Icons.location_pin, size: 42, color: Colors.red),
+        ),
+      );
+    }
+
+    return markers;
+  }
+
+  List<Polyline> _buildPolylines() {
+    if (startLocation == null || endLocation == null) {
+      return [];
+    }
+
+    return [
+      Polyline(
+        points: [startLocation!, endLocation!],
+        strokeWidth: 4,
+        color: Colors.blue,
+      ),
+    ];
+  }
+
   @override
   void dispose() {
     originController.dispose();
@@ -320,6 +396,61 @@ class _DriverRidePageState extends State<DriverRidePage> {
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.map),
+                            SizedBox(width: 8),
+                            Text(
+                              "Select Route on Map",
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: SizedBox(
+                            height: 300,
+                            child: FlutterMap(
+                              options: MapOptions(
+                                initialCenter: const LatLng(23.8103, 90.4125),
+                                initialZoom: 12,
+                                onTap: handleMapTap,
+                              ),
+                              children: [
+                                TileLayer(
+                                  urlTemplate:
+                                      "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                                  userAgentPackageName: "com.example.frontend",
+                                ),
+                                PolylineLayer(polylines: _buildPolylines()),
+                                MarkerLayer(markers: _buildMarkers()),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          "Tap once for start, tap again for destination. A third tap resets and starts a new route.",
+                          style: TextStyle(fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Card(
+                  elevation: 3,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       children: [
@@ -339,7 +470,7 @@ class _DriverRidePageState extends State<DriverRidePage> {
                         const SizedBox(height: 16),
                         TextField(
                           controller: originController,
-                          enabled: canEdit && !isLoading,
+                          enabled: false,
                           decoration: const InputDecoration(
                             labelText: "Origin",
                             prefixIcon: Icon(Icons.location_on_outlined),
@@ -349,7 +480,7 @@ class _DriverRidePageState extends State<DriverRidePage> {
                         const SizedBox(height: 12),
                         TextField(
                           controller: destinationController,
-                          enabled: canEdit && !isLoading,
+                          enabled: false,
                           decoration: const InputDecoration(
                             labelText: "Destination",
                             prefixIcon: Icon(Icons.flag_outlined),
@@ -523,7 +654,13 @@ class _DriverRidePageState extends State<DriverRidePage> {
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
         const Spacer(),
-        Text(value, style: const TextStyle(fontSize: 16)),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: const TextStyle(fontSize: 16),
+          ),
+        ),
       ],
     );
   }
