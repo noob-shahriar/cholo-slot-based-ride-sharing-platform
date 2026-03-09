@@ -36,12 +36,55 @@ class _DriverRidePageState extends State<DriverRidePage> {
   int? rideId;
   String rideStatus = "NOT_CREATED";
   bool isLoading = false;
+  DateTime? selectedDepartureTime;
 
   final String baseUrl = "http://10.0.2.2:5000/api/rides";
 
   bool get canEdit => rideStatus == "NOT_CREATED" || rideStatus == "PLANNED";
   bool get canShowCreate => rideId == null;
   bool get canShowPlannedActions => rideId != null && rideStatus == "PLANNED";
+
+  Future<void> pickDepartureDateTime() async {
+    final now = DateTime.now();
+
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: selectedDepartureTime ?? now,
+      firstDate: now,
+      lastDate: DateTime(now.year + 2),
+    );
+
+    if (pickedDate == null) return;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(selectedDepartureTime ?? now),
+    );
+
+    if (pickedTime == null) return;
+
+    final finalDateTime = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    setState(() {
+      selectedDepartureTime = finalDateTime;
+      departureController.text = finalDateTime.toUtc().toIso8601String();
+    });
+  }
+
+  String formatDepartureForDisplay() {
+    if (selectedDepartureTime == null) return "";
+    final dt = selectedDepartureTime!;
+    final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final minute = dt.minute.toString().padLeft(2, '0');
+    final suffix = dt.hour >= 12 ? 'PM' : 'AM';
+    return "${dt.day}/${dt.month}/${dt.year}  $hour:$minute $suffix";
+  }
 
   Future<void> createRide() async {
     if (!_validateInputs()) return;
@@ -194,6 +237,7 @@ class _DriverRidePageState extends State<DriverRidePage> {
     setState(() {
       rideId = null;
       rideStatus = "NOT_CREATED";
+      selectedDepartureTime = null;
       originController.clear();
       destinationController.clear();
       departureController.clear();
@@ -315,12 +359,19 @@ class _DriverRidePageState extends State<DriverRidePage> {
                         const SizedBox(height: 12),
                         TextField(
                           controller: departureController,
-                          enabled: canEdit && !isLoading,
-                          decoration: const InputDecoration(
+                          readOnly: true,
+                          onTap: (canEdit && !isLoading)
+                              ? pickDepartureDateTime
+                              : null,
+                          decoration: InputDecoration(
                             labelText: "Departure Time",
-                            hintText: "2026-03-10T10:00:00.000Z",
-                            prefixIcon: Icon(Icons.access_time),
-                            border: OutlineInputBorder(),
+                            hintText: "Select departure time",
+                            prefixIcon: const Icon(Icons.access_time),
+                            suffixIcon: const Icon(Icons.calendar_month),
+                            border: const OutlineInputBorder(),
+                            helperText: selectedDepartureTime == null
+                                ? null
+                                : formatDepartureForDisplay(),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -383,7 +434,7 @@ class _DriverRidePageState extends State<DriverRidePage> {
                                 vertical: 6,
                               ),
                               decoration: BoxDecoration(
-                                color: statusColor.withValues(alpha: 0.15),
+                                color: statusColor.withAlpha(38),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
@@ -456,7 +507,7 @@ class _DriverRidePageState extends State<DriverRidePage> {
           ),
           if (isLoading)
             Container(
-              color: Colors.black.withValues(alpha: 0.08),
+              color: Colors.black.withAlpha(20),
               child: const Center(child: CircularProgressIndicator()),
             ),
         ],
