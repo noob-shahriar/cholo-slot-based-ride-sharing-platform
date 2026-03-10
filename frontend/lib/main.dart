@@ -383,7 +383,7 @@ class _DriverRidePageState extends State<DriverRidePage> {
     final statusColor = _statusColor(rideStatus);
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Driver Module 1"), centerTitle: true),
+      appBar: AppBar(title: const Text("Cholo Driver"), centerTitle: true),
       body: Stack(
         children: [
           SingleChildScrollView(
