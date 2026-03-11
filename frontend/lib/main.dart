@@ -141,6 +141,7 @@ class _DriverRidePageState extends State<DriverRidePage> {
           rideId = data["ride"]["id"];
           rideStatus = data["ride"]["status"];
         });
+        await fetchBookingRequests();
         showMessage("Ride created successfully");
       } else {
         showMessage(data["message"] ?? "Failed to create ride");
@@ -345,6 +346,7 @@ class _DriverRidePageState extends State<DriverRidePage> {
       selectedDepartureTime = null;
       startLocation = null;
       endLocation = null;
+      bookingRequests = [];
       originController.clear();
       destinationController.clear();
       departureController.clear();
