@@ -1,9 +1,9 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client-js" 
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "postgresql"       
   url      = env("DATABASE_URL")
 }
 
@@ -14,25 +14,47 @@ enum RideStatus {
   COMPLETED
 }
 
+enum BookingStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
 model User {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  role      String
-  rides     Ride[]
-  createdAt DateTime @default(now())
+  id              Int              @id @default(autoincrement())
+  name            String
+  email           String           @unique
+  role            String
+  rides           Ride[]
+  bookingRequests BookingRequest[] @relation("PassengerBookings")
+  createdAt       DateTime         @default(now())
 }
 
 model Ride {
-  id            Int        @id @default(autoincrement())
-  driverId      Int
-  origin        String
-  destination   String
-  departureTime DateTime
-  seats         Int
-  status        RideStatus @default(PLANNED)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id              Int              @id @default(autoincrement())
+  driverId        Int
+  origin          String
+  destination     String
+  departureTime   DateTime
+  seats           Int
+  status          RideStatus       @default(PLANNED)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
-  driver User @relation(fields: [driverId], references: [id])
+  driver          User             @relation(fields: [driverId], references: [id])
+  bookingRequests BookingRequest[]
+}
+
+model BookingRequest {
+  id          Int           @id @default(autoincrement())
+  rideId       Int
+  passengerId  Int
+  status       BookingStatus @default(PENDING)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  ride         Ride          @relation(fields: [rideId], references: [id])
+  passenger     User          @relation("PassengerBookings", fields: [passengerId], references: [id])
+
+  @@unique([rideId, passengerId])
 }
