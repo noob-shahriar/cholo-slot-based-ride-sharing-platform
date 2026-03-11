@@ -662,6 +662,115 @@ class _DriverRidePageState extends State<DriverRidePage> {
                     ),
                   ),
                 ),
+                if (rideId != null) ...[
+                  const SizedBox(height: 16),
+                  Card(
+                    elevation: 3,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.people_alt_outlined),
+                              const SizedBox(width: 8),
+                              const Text(
+                                "Passenger Booking Requests",
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const Spacer(),
+                              IconButton(
+                                onPressed: isBookingLoading
+                                    ? null
+                                    : fetchBookingRequests,
+                                icon: const Icon(Icons.refresh),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          if (isBookingLoading)
+                            const Center(child: CircularProgressIndicator())
+                          else if (bookingRequests.isEmpty)
+                            const Text("No booking requests yet.")
+                          else
+                            Column(
+                              children: bookingRequests.map((request) {
+                                final passenger = request["passenger"] ?? {};
+                                final bookingStatus =
+                                    request["status"] ?? "UNKNOWN";
+                                final bookingId = request["id"];
+
+                                return Card(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Column(
+                                      children: [
+                                        _infoRow(
+                                          "Passenger",
+                                          passenger["name"]?.toString() ??
+                                              "Unknown",
+                                        ),
+                                        const SizedBox(height: 8),
+                                        _infoRow(
+                                          "Email",
+                                          passenger["email"]?.toString() ??
+                                              "N/A",
+                                        ),
+                                        const SizedBox(height: 8),
+                                        _infoRow(
+                                          "Status",
+                                          bookingStatus.toString(),
+                                        ),
+                                        if (bookingStatus == "PENDING") ...[
+                                          const SizedBox(height: 12),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: FilledButton.icon(
+                                                  onPressed: () =>
+                                                      acceptBookingRequest(
+                                                        bookingId,
+                                                      ),
+                                                  icon: const Icon(Icons.check),
+                                                  label: const Text("Accept"),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: FilledButton.icon(
+                                                  style: FilledButton.styleFrom(
+                                                    backgroundColor: Colors.red,
+                                                  ),
+                                                  onPressed: () =>
+                                                      rejectBookingRequest(
+                                                        bookingId,
+                                                      ),
+                                                  icon: const Icon(Icons.close),
+                                                  label: const Text("Reject"),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 if (canShowCreate)
                   SizedBox(
