@@ -263,6 +263,81 @@ class _DriverRidePageState extends State<DriverRidePage> {
     }
   }
 
+  Future<void> fetchBookingRequests() async {
+    if (rideId == null) return;
+
+    setState(() => isBookingLoading = true);
+
+    try {
+      final response = await http.get(
+        Uri.parse("$bookingBaseUrl/ride/$rideId"),
+        headers: {"Content-Type": "application/json"},
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        setState(() {
+          bookingRequests = List<Map<String, dynamic>>.from(data);
+        });
+      } else {
+        showMessage("Failed to load booking requests");
+      }
+    } catch (e) {
+      showMessage("Could not load booking requests");
+    } finally {
+      setState(() => isBookingLoading = false);
+    }
+  }
+
+  Future<void> acceptBookingRequest(int bookingId) async {
+    setState(() => isBookingLoading = true);
+
+    try {
+      final response = await http.put(
+        Uri.parse("$bookingBaseUrl/$bookingId/accept"),
+        headers: {"Content-Type": "application/json"},
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        showMessage("Booking request accepted");
+        await fetchBookingRequests();
+      } else {
+        showMessage(data["message"] ?? "Failed to accept booking request");
+      }
+    } catch (e) {
+      showMessage("Could not accept booking request");
+    } finally {
+      setState(() => isBookingLoading = false);
+    }
+  }
+
+  Future<void> rejectBookingRequest(int bookingId) async {
+    setState(() => isBookingLoading = true);
+
+    try {
+      final response = await http.put(
+        Uri.parse("$bookingBaseUrl/$bookingId/reject"),
+        headers: {"Content-Type": "application/json"},
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        showMessage("Booking request rejected");
+        await fetchBookingRequests();
+      } else {
+        showMessage(data["message"] ?? "Failed to reject booking request");
+      }
+    } catch (e) {
+      showMessage("Could not reject booking request");
+    } finally {
+      setState(() => isBookingLoading = false);
+    }
+  }
+
   void resetForm() {
     setState(() {
       rideId = null;
