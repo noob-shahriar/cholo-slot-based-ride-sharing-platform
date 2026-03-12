@@ -418,6 +418,9 @@ class _DriverRidePageState extends State<DriverRidePage> {
       destinationController.clear();
       departureController.clear();
       seatsController.clear();
+      routePoints = [];
+      routeDistanceKm = null;
+      routeDurationMin = null;
     });
   }
 
@@ -503,17 +506,11 @@ class _DriverRidePageState extends State<DriverRidePage> {
   }
 
   List<Polyline> _buildPolylines() {
-    if (startLocation == null || endLocation == null) {
+    if (routePoints.isEmpty) {
       return [];
     }
 
-    return [
-      Polyline(
-        points: [startLocation!, endLocation!],
-        strokeWidth: 4,
-        color: Colors.blue,
-      ),
-    ];
+    return [Polyline(points: routePoints, strokeWidth: 4, color: Colors.blue)];
   }
 
   @override
@@ -587,6 +584,17 @@ class _DriverRidePageState extends State<DriverRidePage> {
                           "Tap once for start, tap again for destination. A third tap resets and starts a new route.",
                           style: TextStyle(fontSize: 13),
                         ),
+                        if (routeDistanceKm != null &&
+                            routeDurationMin != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            "Distance: ${routeDistanceKm!.toStringAsFixed(2)} km | Duration: ${routeDurationMin!.toStringAsFixed(0)} min",
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
