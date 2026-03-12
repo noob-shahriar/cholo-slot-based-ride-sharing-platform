@@ -1,3 +1,4 @@
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -41,12 +42,16 @@ class _DriverRidePageState extends State<DriverRidePage> {
   bool isBookingLoading = false;
   DateTime? selectedDepartureTime;
   List<Map<String, dynamic>> bookingRequests = [];
+  List<LatLng> routePoints = [];
+  double? routeDistanceKm;
+  double? routeDurationMin;
 
   LatLng? startLocation;
   LatLng? endLocation;
 
   final String rideBaseUrl = "http://10.0.2.2:5000/api/rides";
   final String bookingBaseUrl = "http://10.0.2.2:5000/api/bookings";
+  final String openRouteServiceApiKey = "PASTE_YOUR_ORS_API_KEY_HERE";
 
   bool get canEdit => rideStatus == "NOT_CREATED" || rideStatus == "PLANNED";
   bool get canShowCreate => rideId == null;
