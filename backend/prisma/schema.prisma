@@ -31,27 +31,27 @@ model User {
 }
 
 model Ride {
-  id              Int              @id @default(autoincrement())
-  driverId        Int
-  origin          String
-  destination     String
+  id               Int               @id @default(autoincrement())
+  driverId         Int
+  origin           String
+  destination      String
 
-  originLat       Float?
-  originLng       Float?
-  destinationLat  Float?
-  destinationLng  Float?
+  originLat        Float?
+  originLng        Float?
+  destinationLat   Float?
+  destinationLng   Float?
 
-  routeDistanceKm Float?
+  routeDistanceKm  Float?
   routeDurationMin Float?
 
-  departureTime   DateTime
-  seats           Int
-  status          RideStatus       @default(PLANNED)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  departureTime    DateTime
+  seats            Int
+  status           RideStatus        @default(PLANNED)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
-  driver          User             @relation(fields: [driverId], references: [id])
-  bookingRequests BookingRequest[]
+  driver           User              @relation(fields: [driverId], references: [id])
+  bookingRequests  BookingRequest[]
 }
 
 model BookingRequest {
