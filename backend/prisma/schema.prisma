@@ -35,6 +35,15 @@ model Ride {
   driverId        Int
   origin          String
   destination     String
+
+  originLat       Float?
+  originLng       Float?
+  destinationLat  Float?
+  destinationLng  Float?
+
+  routeDistanceKm Float?
+  routeDurationMin Float?
+
   departureTime   DateTime
   seats           Int
   status          RideStatus       @default(PLANNED)
