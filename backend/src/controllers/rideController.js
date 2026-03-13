@@ -2,7 +2,19 @@ const prisma = require("../lib/prisma");
 
 exports.createRide = async (req, res) => {
   try {
-    const { driverId, origin, destination, departureTime, seats } = req.body;
+    const {
+      driverId,
+      origin,
+      destination,
+      originLat,
+      originLng,
+      destinationLat,
+      destinationLng,
+      routeDistanceKm,
+      routeDurationMin,
+      departureTime,
+      seats,
+    } = req.body;
 
     if (!driverId || !origin || !destination || !departureTime || !seats) {
       return res.status(400).json({ message: "All fields are required." });
@@ -16,7 +28,13 @@ exports.createRide = async (req, res) => {
         departureTime: new Date(departureTime),
         seats: Number(seats),
         status: "PLANNED",
-      },
+        originLat: originLat != null ? Number(originLat) : null,
+        originLng: originLng != null ? Number(originLng) : null,
+        destinationLat: destinationLat != null ? Number(destinationLat) : null,
+        destinationLng: destinationLng != null ? Number(destinationLng) : null,
+        routeDistanceKm: routeDistanceKm != null ? Number(routeDistanceKm) : null,
+        routeDurationMin: routeDurationMin != null ? Number(routeDurationMin) : null,
+              },
     });
 
     res.status(201).json({
@@ -49,7 +67,18 @@ exports.getRideById = async (req, res) => {
 exports.updateRideRoute = async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const { origin, destination, departureTime, seats } = req.body;
+    const {
+      origin,
+      destination,
+      originLat,
+      originLng,
+      destinationLat,
+      destinationLng,
+      routeDistanceKm,
+      routeDurationMin,
+      departureTime,
+      seats,
+    } = req.body;
 
     const existingRide = await prisma.ride.findUnique({
       where: { id },
@@ -74,6 +103,12 @@ exports.updateRideRoute = async (req, res) => {
           ? new Date(departureTime)
           : existingRide.departureTime,
         seats: seats ? Number(seats) : existingRide.seats,
+        originLat: originLat != null ? Number(originLat) : existingRide.originLat,
+        originLng: originLng != null ? Number(originLng) : existingRide.originLng,
+        destinationLat: destinationLat != null ? Number(destinationLat) : existingRide.destinationLat,
+        destinationLng: destinationLng != null ? Number(destinationLng) : existingRide.destinationLng,
+        routeDistanceKm: routeDistanceKm != null ? Number(routeDistanceKm) : existingRide.routeDistanceKm,
+        routeDurationMin: routeDurationMin != null ? Number(routeDurationMin) : existingRide.routeDurationMin,
       },
     });
 

@@ -487,6 +487,12 @@ class _DriverRidePageState extends State<DriverRidePage> {
           "destination": destinationController.text.trim(),
           "departureTime": departureController.text.trim(),
           "seats": int.tryParse(seatsController.text.trim()) ?? 1,
+          "originLat": startLocation?.latitude,
+          "originLng": startLocation?.longitude,
+          "destinationLat": endLocation?.latitude,
+          "destinationLng": endLocation?.longitude,
+          "routeDistanceKm": routeDistanceKm,
+          "routeDurationMin": routeDurationMin,
         }),
       );
 
@@ -524,6 +530,12 @@ class _DriverRidePageState extends State<DriverRidePage> {
           "destination": destinationController.text.trim(),
           "departureTime": departureController.text.trim(),
           "seats": int.tryParse(seatsController.text.trim()) ?? 1,
+          "originLat": startLocation?.latitude,
+          "originLng": startLocation?.longitude,
+          "destinationLat": endLocation?.latitude,
+          "destinationLng": endLocation?.longitude,
+          "routeDistanceKm": routeDistanceKm,
+          "routeDurationMin": routeDurationMin,
         }),
       );
 
