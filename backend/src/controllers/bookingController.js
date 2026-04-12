@@ -124,6 +124,31 @@ exports.acceptBookingRequest = async (req, res) => {
   }
 };
 
+exports.getBookingById = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    const bookingRequest = await prisma.bookingRequest.findUnique({
+      where: { id },
+      include: {
+        passenger: true,
+        ride: true,
+        seatLock: true,
+        confirmedSeat: true,
+        payment: true,
+      },
+    });
+
+    if (!bookingRequest) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    res.json(bookingRequest);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 exports.rejectBookingRequest = async (req, res) => {
   try {
     const id = Number(req.params.id);

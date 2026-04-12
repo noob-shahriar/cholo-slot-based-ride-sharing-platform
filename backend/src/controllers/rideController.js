@@ -1,4 +1,5 @@
 const prisma = require("../lib/prisma");
+const { onRideCancelled } = require("../integrations/ridePaymentIntegration");
 
 exports.createRide = async (req, res) => {
   try {
@@ -145,6 +146,8 @@ exports.cancelRide = async (req, res) => {
         status: "CANCELLED",
       },
     });
+
+    await onRideCancelled(id);
 
     res.json({
       message: "Ride cancelled successfully",
