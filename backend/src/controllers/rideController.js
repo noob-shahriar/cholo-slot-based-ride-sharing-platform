@@ -188,3 +188,71 @@ exports.startRide = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+exports.endRide = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+
+    const existingRide = await prisma.ride.findUnique({
+      where: { id },
+      include: {
+        driver: { select: { id: true, name: true, email: true } },
+        bookingRequests: {
+          where: { status: "ACCEPTED" },
+          include: {
+            passenger: { select: { id: true, name: true, email: true } },
+          },
+        },
+      },
+    });
+
+    if (!existingRide) {
+      return res.status(404).json({ message: "Ride not found" });
+    }
+
+    if (existingRide.status !== "ONGOING") {
+      return res.status(400).json({
+        message: "Only an ongoing ride can be ended.",
+      });
+    }
+
+    const completedRide = await prisma.ride.update({
+      where: { id },
+      data: {
+        status: "COMPLETED",
+      },
+      include: {
+        driver: { select: { id: true, name: true, email: true } },
+        bookingRequests: {
+          where: { status: "ACCEPTED" },
+          include: {
+            passenger: { select: { id: true, name: true, email: true } },
+          },
+        },
+      },
+    });
+
+    const summary = {
+      rideId: completedRide.id,
+      origin: completedRide.origin,
+      destination: completedRide.destination,
+      departureTime: completedRide.departureTime,
+      completedAt: completedRide.updatedAt,
+      routeDistanceKm: completedRide.routeDistanceKm,
+      routeDurationMin: completedRide.routeDurationMin,
+      totalSeats: completedRide.seats,
+      passengersCarried: completedRide.bookingRequests.length,
+      passengers: completedRide.bookingRequests.map((b) => b.passenger),
+      driver: completedRide.driver,
+      status: completedRide.status,
+    };
+
+    res.json({
+      message: "Ride completed successfully",
+      ride: completedRide,
+      summary,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

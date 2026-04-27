@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import 'backend_config.dart';
 import 'login_screen.dart';
 import 'verification_request_page.dart';
+import 'ride_summary_screen.dart';
 
 class DriverPanel extends StatefulWidget {
   final int userId;
@@ -30,6 +31,7 @@ class _DriverPanelState extends State<DriverPanel> {
   bool isBookingLoading = false;
   DateTime? selectedDepartureTime;
   List<Map<String, dynamic>> bookingRequests = [];
+  Map<String, dynamic>? rideSummary;
   List<LatLng> routePoints = [];
   double? routeDistanceKm;
   double? routeDurationMin;
@@ -49,6 +51,7 @@ class _DriverPanelState extends State<DriverPanel> {
   bool get canEdit => rideStatus == "NOT_CREATED" || rideStatus == "PLANNED";
   bool get canShowCreate => rideId == null;
   bool get canShowPlannedActions => rideId != null && rideStatus == "PLANNED";
+  bool get canShowOngoingActions => rideId != null && rideStatus == "ONGOING";
 
   @override
   void initState() {
@@ -235,6 +238,66 @@ class _DriverPanelState extends State<DriverPanel> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error starting ride: $e')));
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> endRide() async {
+    if (rideId == null) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('End Ride'),
+        content: const Text('Are you sure you want to end this ride and mark it as completed?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFF98825)),
+            child: const Text('Yes, End Ride'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => isLoading = true);
+
+    try {
+      final response = await http.put(
+        Uri.parse('${backendUrl}/api/rides/$rideId/end'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          rideStatus = 'COMPLETED';
+          rideSummary = data['summary'];
+        });
+        if (mounted) {
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => RideSummaryScreen(summary: rideSummary!),
+            ),
+          );
+        }
+      } else {
+        final data = json.decode(response.body);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed: ${data['message']}')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error ending ride: $e')),
+        );
+      }
     } finally {
       setState(() => isLoading = false);
     }
@@ -626,6 +689,56 @@ class _DriverPanelState extends State<DriverPanel> {
                             ? const CircularProgressIndicator()
                             : const Text('Create Ride'),
                       ),
+                  ],
+                  if (canShowOngoingActions) ...[  
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        border: Border.all(color: Colors.green),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.directions_car, color: Colors.green),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Ride is in progress…',
+                              style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ElevatedButton.icon(
+                      onPressed: isLoading ? null : endRide,
+                      icon: const Icon(Icons.flag),
+                      label: const Text('End Ride'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1565C0),
+                        minimumSize: const Size(double.infinity, 50),
+                        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    if (rideSummary != null) ...[  
+                      const SizedBox(height: 8),
+                      ElevatedButton.icon(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => RideSummaryScreen(summary: rideSummary!),
+                          ),
+                        ),
+                        icon: const Icon(Icons.summarize),
+                        label: const Text('View Summary'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF98825),
+                          minimumSize: const Size(double.infinity, 50),
+                        ),
+                      ),
+                    ],
                   ],
                   if (canShowPlannedActions) ...[
                     Row(
