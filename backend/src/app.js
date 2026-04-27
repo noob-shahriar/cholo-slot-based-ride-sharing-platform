@@ -19,6 +19,7 @@ app.use("/api/rides", rideRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/verification", verificationRoutes);
+app.use("/api/users", require("./routes/userRoutes"));
 
 // Global error handler
 app.use((err, req, res, next) => {

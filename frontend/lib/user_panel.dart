@@ -1,8 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 import 'login_screen.dart';
 import 'verification_request_page.dart';
+import 'backend_config.dart';
 
-class UserPanel extends StatelessWidget {
+class UserPanel extends StatefulWidget {
   final int userId;
   final String userName;
 
@@ -10,10 +14,180 @@ class UserPanel extends StatelessWidget {
     : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    final Color brandOrange = const Color(0xFFF98825);
-    final Color darkText = const Color(0xFF2C323A);
+  State<UserPanel> createState() => _UserPanelState();
+}
 
+class _UserPanelState extends State<UserPanel> {
+  final Color brandOrange = const Color(0xFFF98825);
+  final Color darkText = const Color(0xFF2C323A);
+  
+  String? emergencyContact;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserProfile();
+  }
+
+  Future<void> _fetchUserProfile() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$backendUrl/api/users/${widget.userId}'),
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          emergencyContact = data['emergencyContact'];
+          isLoading = false;
+        });
+      } else {
+        setState(() => isLoading = false);
+      }
+    } catch (e) {
+      setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _updateEmergencyContact(String newContact) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$backendUrl/api/users/${widget.userId}/emergency-contact'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'emergencyContact': newContact}),
+      );
+      if (response.statusCode == 200) {
+        setState(() {
+          emergencyContact = newContact;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Emergency contact updated successfully!')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating contact: $e')),
+        );
+      }
+    }
+  }
+
+  void _showSetEmergencyContactDialog() {
+    final TextEditingController controller = TextEditingController(text: emergencyContact);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Set Emergency Contact'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.phone,
+          decoration: const InputDecoration(
+            labelText: 'Phone Number',
+            hintText: 'e.g. +8801...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              if (controller.text.trim().isNotEmpty) {
+                _updateEmergencyContact(controller.text.trim());
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: brandOrange),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEmergencyMenu() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 48),
+              const SizedBox(height: 16),
+              const Text(
+                'Emergency Options',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 24),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.red,
+                  child: Icon(Icons.local_police, color: Colors.white),
+                ),
+                title: const Text('Call 999'),
+                subtitle: const Text('National Emergency Number'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final Uri url = Uri(scheme: 'tel', path: '999');
+                  try {
+                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Could not open the dialer.')),
+                      );
+                    }
+                  }
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: brandOrange,
+                  child: const Icon(Icons.message, color: Colors.white),
+                ),
+                title: const Text('Share Ride Info with Friend'),
+                subtitle: emergencyContact != null 
+                    ? Text('Send SMS to $emergencyContact')
+                    : const Text('No emergency contact set. Tap to set.'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  if (emergencyContact == null || emergencyContact!.isEmpty) {
+                    _showSetEmergencyContactDialog();
+                  } else {
+                    final String msg = 'Emergency! I am currently taking a Cholo ride. Please contact me.';
+                    final Uri url = Uri(scheme: 'sms', path: emergencyContact, queryParameters: {'body': msg});
+                    try {
+                      await launchUrl(url, mode: LaunchMode.externalApplication);
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Could not open the SMS app.')),
+                        );
+                      }
+                    }
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -26,7 +200,9 @@ class UserPanel extends StatelessWidget {
         elevation: 0,
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: isLoading 
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -37,7 +213,7 @@ class UserPanel extends StatelessWidget {
 
               // Welcome Title
               Text(
-                'Welcome to Cholo',
+                'Welcome, ${widget.userName}!',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
@@ -54,6 +230,36 @@ class UserPanel extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 48),
+
+              // Emergency Contact Status
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.health_and_safety, color: Colors.red),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Emergency Contact', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text(emergencyContact != null ? emergencyContact! : 'Not set'),
+                        ],
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _showSetEmergencyContactDialog,
+                      child: Text(emergencyContact != null ? 'Edit' : 'Add', style: const TextStyle(color: Colors.red)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
 
               // User Features List
               Container(
@@ -164,8 +370,8 @@ class UserPanel extends StatelessWidget {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) => VerificationRequestPage(
-                              userId: userId,
-                              userName: userName,
+                              userId: widget.userId,
+                              userName: widget.userName,
                             ),
                           ),
                         );
@@ -180,9 +386,16 @@ class UserPanel extends StatelessWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: 40), // Extra space for FAB
             ],
           ),
         ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showEmergencyMenu,
+        backgroundColor: Colors.red,
+        icon: const Icon(Icons.emergency, color: Colors.white),
+        label: const Text('EMERGENCY', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
     );
   }
@@ -223,8 +436,6 @@ class UserPanel extends StatelessWidget {
     IconData icon,
     VoidCallback onPressed,
   ) {
-    final Color brandOrange = const Color(0xFFF98825);
-
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
