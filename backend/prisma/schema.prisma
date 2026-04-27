@@ -20,14 +20,34 @@ enum BookingStatus {
   REJECTED
 }
 
+enum Role {
+  PASSENGER
+  DRIVER
+  ADMIN
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum DocumentType {
+  NID
+  DRIVERS_LICENSE
+}
+
 model User {
-  id              Int              @id @default(autoincrement())
+  id              Int                   @id @default(autoincrement())
   name            String
-  email           String           @unique
-  role            String
+  email           String                @unique
+  password        String?
+  role            Role                  @default(PASSENGER)
   rides           Ride[]
-  bookingRequests BookingRequest[] @relation("PassengerBookings")
-  createdAt       DateTime         @default(now())
+  bookingRequests BookingRequest[]      @relation("PassengerBookings")
+  verifications   VerificationRequest[]
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
 }
 
 model Ride {
@@ -66,4 +86,19 @@ model BookingRequest {
   passenger     User          @relation("PassengerBookings", fields: [passengerId], references: [id])
 
   @@unique([rideId, passengerId])
+}
+
+model VerificationRequest {
+  id              Int                @id @default(autoincrement())
+  userId          Int
+  documentType    String
+  documentPath    String
+  status          VerificationStatus @default(PENDING)
+  rejectionReason String?
+  extractedData   Json?
+  
+  user            User               @relation(fields: [userId], references: [id])
+  
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
 }
